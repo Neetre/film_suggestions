@@ -71,3 +71,66 @@ class ScoredIndexSearch(object):
         pipe.execute()
     
         return len(keys)
+
+    def add_indexed_item(self, id, content):
+        return self.handle_content(id, content, True)
+    
+    def remove_indexed_item(self, id, content):
+        return self.handle_content(id, content, False)
+    
+    def search(self, query_string, offset=0, count=10):
+        keys = [self.prefix + key for key in self.get_index_keys(query_string, False)]
+    
+        if not keys:
+            return [], 0
+        
+        def idf(count):
+            if not count:
+                return 0
+            return max(math.log(total_docs / count, 2), 0)
+    
+        total_docs = max(self.connection.scard(self.prefix + 'indexed:'), 1)
+
+        pipe = self.connection.pipeline(False)
+        for key in keys:
+            pipe.zcard(key)
+        sizes = pipe.execute()
+    
+        idfs = list(map(idf, sizes))
+        weights = dict((key, idfv) for key, size, idfv in zip(keys, sizes, idfs) if size)
+        
+        if not weights:
+            return [], 0
+
+        temp_key = self.prefix + 'temp:' + os.urandom(8).hex()
+        try:
+            known = self.connection.zunionstore(temp_key, weights)
+            ids = self.connection.zrevrange(temp_key, offset, offset + count - 1, withscores=True)
+        finally:
+            self.connection.delete(temp_key)
+        return ids, known
+    
+def main():
+    try:
+        t = ScoredIndexSearch('search', 'localhost')
+        t.connection.ping()  # Check if the Redis server is available
+
+        # Get the list of keys and delete them properly
+        keys = t.connection.keys('search*')
+        if keys:
+            t.connection.delete(*keys)
+        
+        t.add_indexed_item(1, 'This is a test')
+        t.add_indexed_item(2, 'I am testing this search engine that I wrote')
+
+        print(t.search('test'))
+        print(t.search('search'))
+
+        t.remove_indexed_item(1, 'This is a test')
+        print(t.search('test'))
+        print(t.search('search'))
+    except ConnectionError:
+        print("Failed to connect to Redis. Please ensure that the Redis server is running.")
+
+if __name__ == '__main__':
+    main()

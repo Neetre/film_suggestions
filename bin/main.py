@@ -1,5 +1,5 @@
 import tensorflow_datasets as tfds
-import tensorflow
+import tensorflow as tf
 from search_engine_scoredidx import ScoredIndexSearch
 
 # Check if the dataset is installed
@@ -10,8 +10,13 @@ if "movielens/25m-movies" not in tfds.list_builders():
 # Download the MovieLens dataset
 movies, info = tfds.load("movielens/25m-movies", split="train", with_info=True)
 
-# Print dataset information
-print(info)
+# Check if the dataset is installed
+if "movielens/25m-ratings" not in tfds.list_builders():
+    print("Dataset not installed. Installing now...")
+    tfds.load("movielens/25m-ratings", download=True)
+
+# Download the MovieLens dataset
+ratings, info = tfds.load("movielens/25m-ratings", split="train", with_info=True)
 
 # Create a search engine
 t = ScoredIndexSearch("search", "localhost")
@@ -24,18 +29,15 @@ if keys:
 
 # Index the dataset
 for movie in movies:
-    t.add_indexed_item(movie["movie_id"], movie["movie_title"])
+    movie_id = movie["movie_id"].numpy()
+    movie_title = movie["movie_title"].numpy().decode('utf-8')
+    t.add_indexed_item(movie_id, movie_title)
 
 # Search for a movie
 print(t.search("Toy Story"))
 print(t.search("The Matrix"))
 print(t.search("Star Wars"))
 print(t.search("The Lord of the Rings"))
-
-# Remove a movie from the index
-t.remove_indexed_item(1, "Toy Story")
-print(t.search("Toy Story"))
-print(t.search("The Matrix"))
 
 # Close the connection
 t.connection.close()
