@@ -16,6 +16,13 @@ def process_dataset():
     return(movies)
 
 
+def stems(text):
+    l=[]
+    for i in text.split():
+        l.append(ps.stem(i))
+    return(" ".join(l))
+
+
 def get_similar():
     movies = process_dataset()
     movies['genres'] = movies['genres'].apply(lambda x: [i['name'] for i in ast.literal_eval(x)])
@@ -28,18 +35,21 @@ def get_similar():
     movies['keywords'] = movies['keywords'].apply(lambda x: [ps.stem(i) for i in x])
     movies['cast'] = movies['cast'].apply(lambda x: [ps.stem(i) for i in x])
     movies['crew'] = movies['crew'].apply(lambda x: [ps.stem(i) for i in x])
-    movies['bag_of_words'] = ''
-    columns = ['overview', 'genres', 'keywords', 'cast', 'crew']
-    for index, row in movies.iterrows():
-        words = ''
-        for col in columns:
-            words += ' '.join(row[col]) + ' '
-        row['bag_of_words'] = words
+
+    movies['tags'] = movies['overview'] + movies['genres'] + movies['keywords'] + movies['cast'] + movies['crew']
+    movies = movies.drop('overview', axis=1)
+    movies = movies.drop('genres', axis=1)
+    movies = movies.drop('keywords', axis=1)
+    movies = movies.drop('cast', axis=1)
+    movies = movies.drop('crew', axis=1)
+
+    movies ['tags'] = movies ['tags'].apply(lambda x: " ".join(x))
+    movies['tags'] = movies['tags'].apply(stems)
     
     count = CountVectorizer(max_features=5000, stop_words='english')
-    count_matrix = count.fit_transform(movies['bag_of_words']).toarray()
+    count_matrix = count.fit_transform(movies['tags']).toarray()
     cosine_sim = cosine_similarity(count_matrix, count_matrix)
-    np.save('cosine_sim.npy', cosine_sim)
+    np.save('../data/cosine_sim.npy', cosine_sim)
     return cosine_sim
 
 
@@ -56,7 +66,7 @@ def get_recommendations(title):
 
 
 def main():
-    cosine_sim = get_similar()
+    # cosine_sim = get_similar()
     print(get_recommendations('The Dark Knight Rises'))
     
 if __name__ == '__main__':

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendations</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Movie Recommendations</h1>
+        <form id="movie-form" class="mt-4">
+            <div class="form-group">
+                <label for="title">Movie Title</label>
+                <input type="text" class="form-control" id="title" name="title" placeholder="Enter movie title" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Get Recommendations</button>
+        </form>
+        <div id="recommendations" class="mt-5">
+            <!-- Recommendations will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('movie-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const title = document.getElementById('title').value;
+
+            fetch('/similar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `title=${encodeURIComponent(title)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const recommendationsDiv = document.getElementById('recommendations');
+                recommendationsDiv.innerHTML = '<h3>Recommendations:</h3>';
+                if (data.length > 0) {
+                    const list = document.createElement('ul');
+                    list.className = 'list-group';
+                    data.forEach(movie => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item';
+                        listItem.textContent = movie;
+                        list.appendChild(listItem);
+                    });
+                    recommendationsDiv.appendChild(list);
+                } else {
+                    recommendationsDiv.innerHTML += '<p>No recommendations found.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
