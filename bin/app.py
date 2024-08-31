@@ -13,7 +13,6 @@ def home():
 def similar():
     title = request.form['title']
     recommendations = get_recommendations(title)
-    # Ensure the recommendations are in a JSON serializable format
     if isinstance(recommendations, pd.Series):
         recommendations = recommendations.tolist()
     return jsonify(recommendations)
